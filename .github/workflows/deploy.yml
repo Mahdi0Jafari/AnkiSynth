@@ -12,6 +12,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,24 +21,23 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22" # استفاده از نسخه پایدار ۲۰۲۶
           cache: "npm"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Install dependencies
-        # حذف فایل .npmrc و اجبار به استفاده از ریجستری اصلی
+      - name: Clean and Install
+        # حذف فایل‌های مزاحم و نصب پکیج‌ها مستقیماً از ریجستری اصلی
         run: |
           rm -f .npmrc
           npm install --registry=https://registry.npmjs.org
 
       - name: Build with Next.js
-        # استفاده از وب‌پک برای سازگاری با تنظیمات تخصصی شما
-        run: npx next build --webpack
+        # اجرای بیلد استاندارد؛ نسخه را از package.json می‌خواند
+        run: npm run build
 
-      - name: Fix Jekyll assets
-        # جلوگیری از نادیده گرفته شدن پوشه‌های داخلی توسط گیت‌هاب
+      - name: Fix Static Assets
         run: touch ./out/.nojekyll
 
       - name: Upload artifact
