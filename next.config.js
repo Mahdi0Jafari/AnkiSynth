@@ -1,16 +1,16 @@
 /** @type {import('next').NextConfig} */
 
-// Determine if the environment is production (GitHub Pages build)
 const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig = {
   output: 'export',
-  // Inject the repository name as the base path for GitHub Pages routing
+  // Ensure trailing slashes are added to URLs for GH Pages compatibility
+  trailingSlash: true, 
   basePath: isProd ? '/AnkiSynth' : '',
-  assetPrefix: isProd ? '/AnkiSynth/' : '',
+  // Asset prefix must NOT have a trailing slash if basePath is used
+  assetPrefix: isProd ? '/AnkiSynth' : '',
   images: { unoptimized: true },
   webpack: (config, { isServer }) => {
-    // Prevent server-side execution of client-heavy modules
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
