@@ -4,12 +4,13 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig = {
   output: 'export',
-  // Ensure trailing slashes are added to URLs for GH Pages compatibility
+  // حذف گزینه optimizeFonts چون در نسخه جدید باعث خطا می‌شود
   trailingSlash: true, 
   basePath: isProd ? '/AnkiSynth' : '',
-  // Asset prefix must NOT have a trailing slash if basePath is used
   assetPrefix: isProd ? '/AnkiSynth' : '',
   images: { unoptimized: true },
+  
+  // این بخش برای pdfjs-dist حیاتی است اما با Turbopack تداخل دارد
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
