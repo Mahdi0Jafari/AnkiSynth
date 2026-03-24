@@ -24,21 +24,19 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
-        with:
-          static_site_generator: next
 
       - name: Install dependencies
-        # حذف فایل Mirror برای جلوگیری از فریز شدن نصب
+        # حذف فایل .npmrc و اجبار به استفاده از ریجستری اصلی
         run: |
           rm -f .npmrc
-          npm install
+          npm install --registry=https://registry.npmjs.org
 
       - name: Build with Next.js
-        # اجبار به استفاده از Webpack به دلیل تنظیمات سفارشی در next.config.js
+        # استفاده از وب‌پک برای سازگاری با تنظیمات تخصصی شما
         run: npx next build --webpack
 
       - name: Fix Jekyll assets
-        # جلوگیری از بلاک شدن پوشه _next توسط گیت‌هاب
+        # جلوگیری از نادیده گرفته شدن پوشه‌های داخلی توسط گیت‌هاب
         run: touch ./out/.nojekyll
 
       - name: Upload artifact
