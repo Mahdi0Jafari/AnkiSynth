@@ -9,13 +9,15 @@ import LibraryView from '@/components/Library/LibraryView';
 import ShortcutsModal from '@/components/Settings/ShortcutsModal';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
-// Lazy load heavy client-side modules to bypass SSR collisions
+// Lazy load heavy client-side modules to bypass SSR collisions and optimize initial chunk payload
 const SourcePanel = dynamic(() => import('@/components/Forge/SourcePanel'), { 
-  ssr: false, loading: () => <div className="p-10 opacity-20 animate-pulse font-mono text-[10px] uppercase">Loading Ingestion Core...</div>
+  ssr: false, 
+  loading: () => <div className="p-10 opacity-20 animate-pulse font-mono text-[10px] uppercase">Loading Ingestion Core...</div>
 });
 
 const Workbench = dynamic(() => import('@/components/Forge/Workbench'), { 
-  ssr: false, loading: () => <div className="p-10 opacity-20 animate-pulse font-mono text-[10px] uppercase">Loading Workbench...</div>
+  ssr: false, 
+  loading: () => <div className="p-10 opacity-20 animate-pulse font-mono text-[10px] uppercase">Loading Workbench Subsystem...</div>
 });
 
 export type ViewState = 'forge' | 'library';

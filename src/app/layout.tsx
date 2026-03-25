@@ -6,8 +6,7 @@ import './globals.css';
  * Specifically tuned for GitHub Pages deployment and personal branding.
  */
 export const metadata: Metadata = {
-  // FIX: Resolves the "metadataBase" warning by providing the absolute production URL.
-  // This allows Next.js to generate absolute URLs for social media crawlers.
+  // Resolves the "metadataBase" warning by providing the absolute production URL.
   metadataBase: new URL('https://mahdi0jafari.github.io/AnkiSynth/'),
 
   title: 'AnkiSynth AI | The Digital Forge',
@@ -16,11 +15,11 @@ export const metadata: Metadata = {
   authors: [{ name: 'Mahdi Jafari', url: 'https://github.com/Mahdi0Jafari' }],
   creator: 'Mahdi Jafari',
   
-  // Single Source of Truth for Icons (SVG for infinite scalability)
+  // Relative paths ensure Next.js resolves them correctly within the basePath
   icons: {
-    icon: '/logo.svg',
-    shortcut: '/logo.svg',
-    apple: '/logo.svg',
+    icon: './logo.svg',
+    shortcut: './logo.svg',
+    apple: './logo.svg',
   },
 
   // Social Graph Optimization (Open Graph)
@@ -31,7 +30,7 @@ export const metadata: Metadata = {
     siteName: 'AnkiSynth AI',
     images: [
       {
-        url: '/logo.svg', // Next.js will automatically resolve this to an absolute URL
+        url: './logo.svg',
         width: 800,
         height: 600,
         alt: 'AnkiSynth AI Logo',
@@ -47,11 +46,11 @@ export const metadata: Metadata = {
     title: 'AnkiSynth AI | The Digital Forge',
     description: 'AI-powered flashcard synthesis by Mahdi Jafari.',
     creator: '@Mahdi0Jafari',
-    images: ['/logo.svg'],
+    images: ['./logo.svg'],
   },
 
-  // PWA Manifest Link
-  manifest: '/manifest.json',
+  // Relative path to avoid 404 on sub-directory hosting
+  manifest: './manifest.json',
 };
 
 /**

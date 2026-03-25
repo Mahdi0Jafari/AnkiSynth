@@ -1,17 +1,19 @@
-// next.config.js
 /** @type {import('next').NextConfig} */
 
 const isProd = process.env.NODE_ENV === 'production';
+const repoName = '/AnkiSynth';
 
 const nextConfig = {
   output: 'export',
-  // حذف گزینه optimizeFonts چون در نسخه جدید باعث خطا می‌شود
+  // Ensure paths map perfectly to the GitHub Pages sub-directory
+  basePath: isProd ? repoName : '',
+  assetPrefix: isProd ? repoName : '',
+  
+  // Keep trailing slash to prevent directory vs file 404 errors on GitHub Pages
   trailingSlash: true, 
-  basePath: isProd ? '/AnkiSynth' : '',
-  assetPrefix: isProd ? '/AnkiSynth' : '',
   images: { unoptimized: true },
   
-  // این بخش برای pdfjs-dist حیاتی است اما با Turbopack تداخل دارد
+  // Vital for pdfjs-dist worker initialization, avoiding Turbopack conflicts
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

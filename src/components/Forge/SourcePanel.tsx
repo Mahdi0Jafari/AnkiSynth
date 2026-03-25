@@ -1,4 +1,3 @@
-// src/components/Forge/SourcePanel.tsx
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -24,6 +23,7 @@ export default function SourcePanel() {
     setIsParsing(true);
     try {
       if (file.type === 'application/pdf') {
+        // Bulletproof dynamic import for Next.js Webpack limits
         const pdfjsLib = await import('pdfjs-dist/build/pdf.min.mjs');
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
@@ -37,7 +37,7 @@ export default function SourcePanel() {
           const pageText = textContent.items.map((item: any) => item.str).join(' ');
           extractedText += pageText + '\n\n';
         }
-        // Removed the 15000 character hard limit here, logic handled in hook
+        
         setText(extractedText); 
       } else if (file.type === 'text/plain' || file.name.endsWith('.md')) {
         const extractedText = await file.text();
@@ -47,7 +47,7 @@ export default function SourcePanel() {
       }
     } catch (err) {
       console.error("Extraction Core Error:", err);
-      alert("Failed to parse document. Ensure it is not encrypted.");
+      alert("Failed to parse document. Ensure it is not encrypted or corrupted.");
     } finally {
       setIsParsing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

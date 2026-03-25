@@ -3,13 +3,13 @@
   "short_name": "AnkiSynth",
   "icons": [
     {
-      "src": "/logo.svg",
+      "src": "logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ],
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0e0e10",
   "theme_color": "#fb51fb"
