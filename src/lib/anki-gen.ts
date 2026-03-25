@@ -9,24 +9,43 @@ export const exportToAPKG = async (cards: AnkiCard[], deckName: string = 'AnkiSy
   }
 
   try {
-    console.log(`Executing export for ${cards.length} nodes to target: ${deckName}`);
+    console.log(`Executing SLA export for ${cards.length} nodes to target: ${deckName}`);
     
     // @ts-ignore
     const apkg = new AnkiExport(deckName);
 
     cards.forEach(card => {
+      // Escape HTML chars but preserve {{c1::}} brackets for Anki's engine
+      const safeFront = card.front.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      
+      // Parse the structured back field into readable HTML for Anki
+      const backParts = card.back.split('|').map(p => p.trim());
+      let formattedBack = card.back;
+      
+      if (backParts.length >= 3) {
+        formattedBack = `
+          <div style="text-align: left; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+            <p style="margin: 0 0 10px 0; color: #f9f5f8;"><strong style="color: #fb51fb; font-size: 12px; letter-spacing: 1px;">DEF:</strong><br/>${backParts[0]}</p>
+            <p style="margin: 0 0 10px 0; color: #adaaad;"><strong style="color: #83fc8e; font-size: 12px; letter-spacing: 1px;">TONE:</strong><br/>${backParts[1]}</p>
+            <p style="margin: 0; color: #ffd16c; font-style: italic;"><strong style="color: #ffd16c; font-size: 12px; letter-spacing: 1px;">EX:</strong><br/>${backParts.slice(2).join(' | ')}</p>
+          </div>
+        `;
+      }
+
       const frontHTML = `
-        <div style="font-family: 'Arial'; text-align: center; font-size: 22px; color: #ffffff; background: #0e0e10; padding: 40px; border-radius: 12px; border: 1px solid rgba(255,122,250,0.2);">
-          ${card.front}
+        <div style="font-family: 'Inter', 'Arial', sans-serif; text-align: center; font-size: 24px; color: #ffffff; background: #0e0e10; padding: 40px; border-radius: 12px; border: 1px solid rgba(255,122,250,0.2); line-height: 1.5;">
+          ${safeFront}
         </div>`;
       
       const backHTML = `
-        <div style="font-family: 'Arial'; text-align: center; font-size: 18px; color: #ff7afa; background: #0e0e10; padding: 40px; border-radius: 12px;">
-          <div style="margin-bottom: 20px; border-top: 1px solid #333; padding-top: 20px; opacity: 0.5; font-size: 12px; letter-spacing: 2px;">RESPONSE</div>
-          ${card.back}
+        <div style="font-family: 'Inter', 'Arial', sans-serif; font-size: 16px; color: #e0e0e0; background: #0e0e10; padding: 40px; border-radius: 12px;">
+          <div style="margin-bottom: 25px; border-top: 1px solid #333; padding-top: 20px; opacity: 0.5; font-size: 11px; letter-spacing: 3px; text-align: center;">LINGUISTIC DECODING</div>
+          ${formattedBack}
         </div>`;
 
-      apkg.addCard(frontHTML, backHTML, { tags: card.tags });
+      // NOTE: For Anki to natively process {{c1::}}, the user must change the "Note Type" to "Cloze" inside Anki after import. 
+      // The tags ensure the user can easily find and bulk-change them.
+      apkg.addCard(frontHTML, backHTML, { tags: [...card.tags, `Type:${card.type}`] });
     });
 
     const zipContent = await apkg.save();
@@ -49,6 +68,6 @@ export const exportToAPKG = async (cards: AnkiCard[], deckName: string = 'AnkiSy
 
   } catch (error) {
     console.error('Core Engine Failure (APKG Component):', error);
-    alert('Compilation error occurred during package generation.');
+    alert('Compilation error occurred during SLA package generation.');
   }
 };

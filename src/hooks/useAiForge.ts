@@ -22,13 +22,33 @@ export const useAiForge = () => {
     setIsForging(true);
     setError(null);
 
-    // تزریق دینامیک دستورات بر اساس انتخاب کاربر
-    let styleInstruction = "Generate a mix of 'basic' and 'cloze' cards depending on what fits the context best.";
+    // تزریق استراتژی اکتساب زبان بر اساس نظریات زبان‌شناسی
+    let styleInstruction = "STRATEGY: Hybrid Acquisition. Generate a mix of Cloze (for idioms/collocations) and Basic (for pragmatic logic).";
+    
     if (typePreference === 'qna') {
-      styleInstruction = "CRITICAL CONSTRAINT: Generate ONLY 'basic' (Q&A) cards. DO NOT generate cloze deletions.";
+      styleInstruction = `
+        STRATEGY: Conceptual & Pragmatic Understanding.
+        - Create ONLY Basic Q&A cards. DO NOT generate cloze deletions.
+        - Front: Ask about the meaning, tone, or usage of a specific chunk from the text.
+        - Back: Follow the [Definition] | [Tone/Pragmatics] | [Example] format.`;
     } else if (typePreference === 'cloze') {
-      styleInstruction = "CRITICAL CONSTRAINT: Generate ONLY 'cloze' deletion cards. The 'front' must contain the full sentence with [...], and the 'back' must contain the missing word(s).";
+      styleInstruction = `
+        STRATEGY: Contextual Gap-Filling (Lexical Approach).
+        - Create ONLY Cloze Deletion cards using {{c1::...}} syntax.
+        - Target: Hide High-yield Phrasal Verbs, Idioms, or complex Collocations.
+        - Example Front: "I need to {{c1::get my act together}} before the chef arrives."`;
     }
+
+    // کپسوله‌سازی لایه متادیتا و بافتار
+    const userMessage = `
+      SOURCE TEXT (Identify Scene/Context):
+      "${sourceText}"
+      
+      INSTRUCTION:
+      ${styleInstruction}
+      - Use high-IQ linguistic terminology in the "Tone/Pragmatics" section.
+      - Ensure one tag is ALWAYS the identified Scene/Atmosphere.
+    `;
 
     try {
       const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -41,10 +61,10 @@ export const useAiForge = () => {
           model: model,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `SOURCE TEXT:\n${sourceText}\n\n${styleInstruction}` }
+            { role: 'user', content: userMessage }
           ],
           response_format: { type: "json_object" },
-          temperature: 0.3
+          temperature: 0.3 // کمترین میزان آنتروپی برای پایداری Schema
         })
       });
 

@@ -2,16 +2,17 @@ import Dexie, { type Table } from 'dexie';
 
 export interface AnkiCard {
   id?: number;
-  deckId?: number;      // کلید خارجی برای ارتباط با AnkiDeck
+  deckId?: number;      
   front: string;
   back: string;
   type: 'basic' | 'cloze';
   sourceText?: string;
-  sourceHash?: string;  // برای جلوگیری از ایجاد کارت‌های تکراری (Idempotency)
+  sourceHash?: string;  
   createdAt: number;
   status: 'draft' | 'approved' | 'archived';
   tags: string[];
-  modelName?: string;   // برای انطباق با Note Type‌های نرم‌افزار Anki در آینده
+  modelName?: string;   
+  sceneContext?: string; // فیلد جدید برای ذخیره دیتای ساختاریافته‌ی بافتار
 }
 
 export interface AnkiDeck {
@@ -29,14 +30,9 @@ export class AnkiSynthDB extends Dexie {
     super('AnkiSynthDB');
     
     /**
-     * Version 3: Optimized Indexing & Deduplication Support
-     * ++id: کلید اصلی خودکار
-     * deckId: برای لود سریع کارت‌های یک دک (O(log n))
-     * status: برای فیلتر کردن ورک‌بنچ
-     * *tags: ایندکس Multi-entry (بسیار حیاتی برای جستجوی تگ‌ها)
-     * sourceHash: ایندکس یکتا برای جلوگیری از افزونگی داده
+     * Version 4: Upgraded for SLA Architecture (Added sceneContext support)
      */
-    this.version(3).stores({
+    this.version(4).stores({
       cards: '++id, deckId, status, createdAt, *tags, sourceHash',
       decks: '++id, name, createdAt'
     });
