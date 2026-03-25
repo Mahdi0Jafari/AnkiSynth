@@ -1,4 +1,3 @@
-// src/lib/anki-gen.ts
 // @ts-ignore
 import AnkiExport from 'anki-apkg-export';
 import { AnkiCard } from './db';
@@ -16,10 +15,8 @@ export const exportToAPKG = async (cards: AnkiCard[], deckName: string = 'AnkiSy
     const apkg = new AnkiExport(deckName);
 
     cards.forEach(card => {
-      // Escape HTML chars but preserve {{c1::}} brackets for Anki's engine
       const safeFront = card.front.replace(/</g, "&lt;").replace(/>/g, "&gt;");
       
-      // Parse the structured back field into readable HTML for Anki
       const backParts = card.back.split('|').map(p => p.trim());
       let formattedBack = card.back;
       
@@ -44,8 +41,6 @@ export const exportToAPKG = async (cards: AnkiCard[], deckName: string = 'AnkiSy
           ${formattedBack}
         </div>`;
 
-      // NOTE: For Anki to natively process {{c1::}}, the user must change the "Note Type" to "Cloze" inside Anki after import. 
-      // The tags ensure the user can easily find and bulk-change them.
       apkg.addCard(frontHTML, backHTML, { tags: [...card.tags, `Type:${card.type}`] });
     });
 

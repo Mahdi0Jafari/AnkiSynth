@@ -4,8 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAnkiDB } from '@/hooks/useAnkiDB';
 import { useNavigationStore } from '@/store/useNavigationStore';
 import Flashcard from './Flashcard';
-import { CheckCircle2, Trash2, Download, Table2, Edit3, Archive, ChevronDown, PackageOpen, PlusCircle } from 'lucide-react';
-import { exportToAPKG } from '@/lib/anki-gen';
+import { CheckCircle2, Trash2, Download, Table2, Edit3, Archive, ChevronDown, PackageOpen, PlusCircle, Loader2 } from 'lucide-react';
 import { AnkiCard, db } from '@/lib/db';
 
 export default function Workbench() {
@@ -14,6 +13,7 @@ export default function Workbench() {
   
   const [deckName, setDeckName] = useState('AnkiSynth_Deck');
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false); // اضافه کردن وضعیت لودینگ برای اکسپورت
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   const approvedCards = cards.filter(c => c.status === 'approved');
@@ -54,8 +54,20 @@ export default function Workbench() {
 
   const handleAPKGExport = async () => {
     if (approvedCards.length === 0) return alert("Validation Failed: No approved cards to export.");
-    await exportToAPKG(approvedCards, deckName);
+    
+    setIsExporting(true);
     setIsExportMenuOpen(false);
+    
+    try {
+      // Lazy load the heavy APKG generation logic only when needed
+      const { exportToAPKG } = await import('@/lib/anki-gen');
+      await exportToAPKG(approvedCards, deckName);
+    } catch (error) {
+      console.error("Dynamic import of APKG exporter failed:", error);
+      alert("Failed to load export module. Please check your connection.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleCSVExport = () => {
@@ -110,10 +122,12 @@ export default function Workbench() {
           <div className="relative" ref={dropdownRef}>
             <button 
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-              disabled={approvedCards.length === 0}
-              className={`flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-white/80 transition-all ${approvedCards.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/10'}`}
+              disabled={approvedCards.length === 0 || isExporting}
+              className={`flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-white/80 transition-all ${approvedCards.length === 0 || isExporting ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/10'}`}
             >
-              <Download size={14} /> Export <ChevronDown size={12} className={`transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+              {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} 
+              {isExporting ? 'Exporting...' : 'Export'} 
+              {!isExporting && <ChevronDown size={12} className={`transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />}
             </button>
             
             {isExportMenuOpen && (
