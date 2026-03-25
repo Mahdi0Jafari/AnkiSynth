@@ -1,3 +1,4 @@
+// src/lib/anki-gen.ts
 // @ts-ignore
 import AnkiExport from 'anki-apkg-export';
 import { AnkiCard } from './db';

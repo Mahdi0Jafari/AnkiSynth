@@ -1,3 +1,4 @@
+// src/components/Forge/SourcePanel.tsx
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -23,7 +24,6 @@ export default function SourcePanel() {
     setIsParsing(true);
     try {
       if (file.type === 'application/pdf') {
-        // Bulletproof dynamic import for Next.js 14 Webpack limits
         const pdfjsLib = await import('pdfjs-dist/build/pdf.min.mjs');
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
@@ -37,7 +37,8 @@ export default function SourcePanel() {
           const pageText = textContent.items.map((item: any) => item.str).join(' ');
           extractedText += pageText + '\n\n';
         }
-        setText(extractedText.substring(0, 15000)); // Token safety limit
+        // Removed the 15000 character hard limit here, logic handled in hook
+        setText(extractedText); 
       } else if (file.type === 'text/plain' || file.name.endsWith('.md')) {
         const extractedText = await file.text();
         setText(extractedText);

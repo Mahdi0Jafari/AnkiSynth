@@ -1,3 +1,4 @@
+/* src/app/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,7 +7,6 @@
   --background: #0e0e10;
   --foreground: #f9f5f8;
 }
-
 
 body {
   background-color: var(--background);
@@ -29,10 +29,10 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #ff7afa;
+  background: #ff7afa; /* Primary Color Accent */
 }
 
-/* حذف هایلایت آبی در موبایل */
+/* حذف هایلایت آبی در موبایل برای تجربه کاربری تمیزتر */
 * {
   -webkit-tap-highlight-color: transparent;
 }

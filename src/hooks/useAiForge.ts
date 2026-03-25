@@ -1,3 +1,4 @@
+// src/hooks/useAiForge.ts
 import { useState } from 'react';
 import { useSettings } from '../store/useSettings';
 import { useAnkiDB } from './useAnkiDB';
@@ -11,6 +12,72 @@ export const useAiForge = () => {
   const [isForging, setIsForging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const processChunk = async (chunkText: string, styleInstruction: string): Promise<any[]> => {
+    const userMessage = `
+      SOURCE TEXT (Identify Scene/Context):
+      "${chunkText}"
+      
+      INSTRUCTION:
+      ${styleInstruction}
+      - Use high-IQ linguistic terminology in the "Tone/Pragmatics" section.
+      - Ensure one tag is ALWAYS the identified Scene/Atmosphere.
+    `;
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userMessage }
+        ],
+        response_format: { 
+          type: "json_schema",
+          json_schema: {
+            name: "anki_cards_schema",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                cards: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      front: { type: "string" },
+                      back: { type: "string" },
+                      type: { type: "string", enum: ["basic", "cloze"] },
+                      tags: { type: "array", items: { type: "string" } }
+                    },
+                    required: ["front", "back", "type", "tags"],
+                    additionalProperties: false
+                  }
+                }
+              },
+              required: ["cards"],
+              additionalProperties: false
+            }
+          }
+        },
+        temperature: 0.7 // Increased for better pragmatic/tone analysis with strict schema
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `Protocol Error ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    const parsed = JSON.parse(content);
+    return parsed.cards || [];
+  };
+
   const forgeCards = async (sourceText: string, typePreference: CardTypePreference = 'mixed') => {
     if (!sourceText.trim()) return;
     
@@ -22,7 +89,6 @@ export const useAiForge = () => {
     setIsForging(true);
     setError(null);
 
-    // تزریق استراتژی اکتساب زبان بر اساس نظریات زبان‌شناسی
     let styleInstruction = "STRATEGY: Hybrid Acquisition. Generate a mix of Cloze (for idioms/collocations) and Basic (for pragmatic logic).";
     
     if (typePreference === 'qna') {
@@ -39,46 +105,33 @@ export const useAiForge = () => {
         - Example Front: "I need to {{c1::get my act together}} before the chef arrives."`;
     }
 
-    // کپسوله‌سازی لایه متادیتا و بافتار
-    const userMessage = `
-      SOURCE TEXT (Identify Scene/Context):
-      "${sourceText}"
-      
-      INSTRUCTION:
-      ${styleInstruction}
-      - Use high-IQ linguistic terminology in the "Tone/Pragmatics" section.
-      - Ensure one tag is ALWAYS the identified Scene/Atmosphere.
-    `;
-
     try {
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: userMessage }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.3 // کمترین میزان آنتروپی برای پایداری Schema
-        })
-      });
+      // Basic Semantic Chunking (split by double newline, ~2000 chars max)
+      const paragraphs = sourceText.split(/\n\s*\n/);
+      let currentChunk = '';
+      const chunks: string[] = [];
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error?.message || `Protocol Error ${response.status}`);
+      for (const p of paragraphs) {
+        if (currentChunk.length + p.length > 2000) {
+          if (currentChunk) chunks.push(currentChunk.trim());
+          currentChunk = p;
+        } else {
+          currentChunk += (currentChunk ? '\n\n' : '') + p;
+        }
+      }
+      if (currentChunk) chunks.push(currentChunk.trim());
+
+      let allCards: any[] = [];
+      
+      // Process chunks sequentially to respect rate limits (can be parallelized later)
+      for (const chunk of chunks) {
+         if(!chunk.trim()) continue;
+         const cards = await processChunk(chunk, styleInstruction);
+         allCards = [...allCards, ...cards];
       }
 
-      const data = await response.json();
-      const content = data.choices[0].message.content;
-      const parsed = JSON.parse(content);
-
-      if (parsed.cards && Array.isArray(parsed.cards)) {
-        await Promise.all(parsed.cards.map((card: any) => 
+      if (allCards.length > 0) {
+        await Promise.all(allCards.map((card: any) => 
           addCard({
             front: card.front || 'Empty Front',
             back: card.back || 'Empty Back',

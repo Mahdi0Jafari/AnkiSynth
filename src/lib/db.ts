@@ -1,3 +1,4 @@
+// src/lib/db.ts
 import Dexie, { type Table } from 'dexie';
 
 export interface AnkiCard {

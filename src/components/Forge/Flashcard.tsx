@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Trash2, CheckCircle2, Type, AlertCircle, Tag } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { Trash2, CheckCircle2, Type, AlertCircle } from 'lucide-react';
 import { AnkiCard } from '@/lib/db';
 
 interface FlashcardProps {
@@ -13,9 +13,22 @@ interface FlashcardProps {
 
 export default function Flashcard({ card, onUpdate, onDelete, onToggleApprove }: FlashcardProps) {
   const isApproved = card.status === 'approved';
+  
+  // Refs for safe contentEditable management
+  const frontRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
 
-  // Highlight Cloze syntax visually in the UI without modifying the underlying raw text
-  const renderFront = (text: string) => {
+  // Sync refs with props on initial load or external update, preventing cursor jumps
+  useEffect(() => {
+    if (frontRef.current && frontRef.current.innerText !== card.front) {
+      frontRef.current.innerText = card.front;
+    }
+    if (backRef.current && backRef.current.innerText !== card.back) {
+      backRef.current.innerText = card.back;
+    }
+  }, [card.front, card.back]);
+
+  const renderFrontBackground = (text: string) => {
     return text.split(/(\{\{c1::.*?\}\})/).map((part, index) => {
       if (part.startsWith('{{c1::') && part.endsWith('}}')) {
         return <span key={index} className="text-tertiary font-mono bg-tertiary/10 px-1 rounded">{part}</span>;
@@ -24,8 +37,7 @@ export default function Flashcard({ card, onUpdate, onDelete, onToggleApprove }:
     });
   };
 
-  // Parse structured back field: [Definition] | [Tone] | [Example]
-  const renderBack = (text: string) => {
+  const renderBackPreview = (text: string) => {
     const parts = text.split('|').map(p => p.trim());
     if (parts.length >= 3) {
       return (
@@ -36,20 +48,18 @@ export default function Flashcard({ card, onUpdate, onDelete, onToggleApprove }:
         </div>
       );
     }
-    return text; // Fallback for unstructured text
+    return null; // Don't show preview if it doesn't match the schema
   };
 
   return (
     <div className={`group relative border transition-all rounded-2xl p-6 ${isApproved ? 'border-secondary/20 bg-[#131315]' : 'border-white/5 bg-[#131315] hover:border-primary/30 hover:shadow-[0_0_30px_rgba(251,81,251,0.05)]'}`}>
       
-      {/* Structural Header */}
       <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 opacity-50">
             <Type size={14} />
             <span className="text-[10px] font-bold uppercase tracking-widest">{card.type}</span>
           </div>
-          {/* Tag Rendering (Showing Context/Scene) */}
           <div className="flex gap-1.5 flex-wrap">
             {card.tags.map(tag => (
               <span key={tag} className={`text-[9px] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider ${tag.startsWith('Scene:') ? 'bg-primary/20 text-primary' : 'bg-white/5 text-white/40'}`}>
@@ -59,7 +69,6 @@ export default function Flashcard({ card, onUpdate, onDelete, onToggleApprove }:
           </div>
         </div>
         
-        {/* Granular Control Tools */}
         <div className="flex items-center gap-2">
           <button 
             onClick={() => card.id && onToggleApprove(card.id)}
@@ -78,31 +87,47 @@ export default function Flashcard({ card, onUpdate, onDelete, onToggleApprove }:
         </div>
       </div>
 
-      {/* Editable Properties */}
       <div className="space-y-4">
         <div className="relative">
-          <div className="absolute top-0 left-0 w-full h-full pointer-events-none">{renderFront(card.front)}</div>
+          {/* Visual highlight layer (underneath the text) */}
+          <div className="absolute top-0 left-0 w-full h-full pointer-events-none whitespace-pre-wrap word-break-words opacity-50">
+            {renderFrontBackground(card.front)}
+          </div>
+          {/* Editable text layer */}
           <div 
+            ref={frontRef}
             contentEditable
             suppressContentEditableWarning
-            onBlur={(e) => card.id && onUpdate(card.id, { front: e.currentTarget.innerText })}
-            className="text-sm font-medium text-transparent caret-white outline-none border-b border-transparent focus:border-primary/50 pb-1 z-10 relative"
-          >
-            {card.front}
-          </div>
+            onBlur={(e) => {
+              const newText = e.currentTarget.innerText;
+              if (newText !== card.front && card.id) {
+                onUpdate(card.id, { front: newText });
+              }
+            }}
+            className="text-sm font-medium outline-none border-b border-transparent focus:border-primary/50 pb-1 z-10 relative"
+          />
         </div>
         
-        <div 
-          contentEditable
-          suppressContentEditableWarning
-          onBlur={(e) => card.id && onUpdate(card.id, { back: e.currentTarget.innerText })}
-          className="outline-none border-b border-transparent focus:border-primary/50 pb-1"
-        >
-          {/* We render the raw text in edit mode, but visually styled when not focused. For simplicity in React contentEditable, we just show raw text, allowing the user to edit the pipes directly. */}
-          {card.back}
-        </div>
-        <div className="pointer-events-none opacity-80 border-l-2 border-white/10 pl-3">
-           {renderBack(card.back)}
+        <div className="space-y-2">
+           <div 
+              ref={backRef}
+              contentEditable
+              suppressContentEditableWarning
+              onBlur={(e) => {
+                const newText = e.currentTarget.innerText;
+                if (newText !== card.back && card.id) {
+                  onUpdate(card.id, { back: newText });
+                }
+              }}
+              className="outline-none border-b border-transparent focus:border-primary/50 pb-1 text-xs text-white/70"
+            />
+            
+            {/* Render the parsed preview only if it matches the schema */}
+            {card.back.includes('|') && (
+               <div className="pointer-events-none opacity-80 border-l-2 border-white/10 pl-3 mt-2 bg-black/20 p-2 rounded-r-lg">
+                  {renderBackPreview(card.back)}
+               </div>
+            )}
         </div>
       </div>
     </div>
