@@ -1,5 +1,19 @@
 /** @type {import('next').NextConfig} */
 
+// تزریق موتور PWA با بهینه‌سازی برای محیط پروداکشن
+const withPWA = require("@ducanh2912/next-pwa").default({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  swcMinify: true,
+  // در محیط توسعه غیرفعال می‌شود تا باگ‌های کشینگ ایجاد نکند
+  disable: process.env.NODE_ENV === "development",
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+});
+
 const isProd = process.env.NODE_ENV === 'production';
 const repoName = '/AnkiSynth';
 
@@ -26,4 +40,5 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig;
+// خروجی نهایی از درون کوره PWA عبور می‌کند
+module.exports = withPWA(nextConfig);

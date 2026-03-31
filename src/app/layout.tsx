@@ -3,7 +3,7 @@ import './globals.css';
 
 /**
  * Global System Metadata Configuration
- * Specifically tuned for GitHub Pages deployment and personal branding.
+ * Specifically tuned for GitHub Pages deployment, PWA, and personal branding.
  */
 export const metadata: Metadata = {
   // Resolves the "metadataBase" warning by providing the absolute production URL.
@@ -14,12 +14,20 @@ export const metadata: Metadata = {
   keywords: ['Anki', 'Flashcards', 'AI', 'Spaced Repetition', 'Study', 'Language Learning', 'AnkiSynth', 'Mahdi Jafari'],
   authors: [{ name: 'Mahdi Jafari', url: 'https://github.com/Mahdi0Jafari' }],
   creator: 'Mahdi Jafari',
+  applicationName: 'AnkiSynth',
+  
+  // PWA specific tags for iOS
+  appleWebApp: {
+    capable: true,
+    title: 'AnkiSynth',
+    statusBarStyle: 'black-translucent',
+  },
   
   // Relative paths ensure Next.js resolves them correctly within the basePath
   icons: {
     icon: './logo.svg',
     shortcut: './logo.svg',
-    apple: './logo.svg',
+    apple: './icon-192x192.png', // iOS prefers PNG for home screen icons
   },
 
   // Social Graph Optimization (Open Graph)
@@ -55,11 +63,14 @@ export const metadata: Metadata = {
 
 /**
  * Viewport Configuration (Next.js 14+ Standard)
+ * Hardened for PWA to prevent layout shifting and auto-zooming on mobile inputs.
  */
 export const viewport: Viewport = {
   themeColor: '#0e0e10',
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,    // Critical for iOS: prevents auto-zoom on textarea focus
+  userScalable: false, // Locks the app layout like a native application
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
