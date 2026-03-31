@@ -39,13 +39,19 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
 
   const handleExport = useCallback(async () => {
     try {
-      await exportDatabase();
+      // Package current settings into the snapshot
+      await exportDatabase({
+        apiKey: settings.apiKey,
+        baseUrl: settings.baseUrl,
+        model: settings.model,
+        defaultInstructions: settings.defaultInstructions,
+      });
       setVaultState({ phase: 'exported' });
       setTimeout(() => setVaultState({ phase: 'idle' }), 2500);
     } catch {
       setVaultState({ phase: 'error', message: 'Export failed unexpectedly.' });
     }
-  }, [exportDatabase]);
+  }, [exportDatabase, settings]);
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -72,11 +78,21 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
     const result = await importDatabase(snapshot);
 
     if (result.success) {
+      // Restore settings from the snapshot into the Zustand store
+      if (result.settings) {
+        settings.setSettings(result.settings);
+        // Also update local state so the UI reflects restored values instantly
+        setLocalSettings({
+          apiKey: result.settings.apiKey,
+          baseUrl: result.settings.baseUrl,
+          model: result.settings.model,
+        });
+      }
       setVaultState({ phase: 'success', deckCount: result.deckCount, cardCount: result.cardCount });
     } else {
       setVaultState({ phase: 'error', message: result.error || 'Import failed.' });
     }
-  }, [vaultState, importDatabase]);
+  }, [vaultState, importDatabase, settings]);
 
   const resetVault = useCallback(() => {
     setVaultState({ phase: 'idle' });

@@ -3,6 +3,17 @@ import { db, type AnkiCard, type AnkiDeck } from '../lib/db';
 import { useNavigationStore } from '../store/useNavigationStore';
 
 /**
+ * Settings payload shape for snapshot portability.
+ * Mirrors the Zustand settings store fields.
+ */
+export interface SnapshotSettings {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  defaultInstructions: string;
+}
+
+/**
  * AnkiSynth Snapshot Schema
  * The canonical format for portable database backups (.asynth files).
  */
@@ -10,6 +21,7 @@ export interface AnkiSynthSnapshot {
   version: number;
   appVersion: string;
   exportedAt: string;
+  settings?: SnapshotSettings;
   data: {
     decks: AnkiDeck[];
     cards: AnkiCard[];
@@ -20,6 +32,7 @@ export interface ImportResult {
   success: boolean;
   deckCount: number;
   cardCount: number;
+  settings?: SnapshotSettings;
   error?: string;
 }
 
@@ -199,10 +212,10 @@ export const useAnkiDB = () => {
   // ═══════════════════════════════════════════════════════════
 
   /**
-   * exportDatabase — Creates a full snapshot of the database and triggers
-   * a browser download as a branded .asynth file.
+   * exportDatabase — Creates a full snapshot of the database (including settings)
+   * and triggers a browser download as a branded .asynth file.
    */
-  const exportDatabase = async (): Promise<void> => {
+  const exportDatabase = async (currentSettings: SnapshotSettings): Promise<void> => {
     const [allDecks, allCards] = await Promise.all([
       db.decks.toArray(),
       db.cards.toArray(),
@@ -212,6 +225,7 @@ export const useAnkiDB = () => {
       version: 4,
       appVersion: '0.1.0',
       exportedAt: new Date().toISOString(),
+      settings: currentSettings,
       data: {
         decks: allDecks,
         cards: allCards,
@@ -259,6 +273,7 @@ export const useAnkiDB = () => {
         success: true,
         deckCount: snapshot.data.decks.length,
         cardCount: snapshot.data.cards.length,
+        settings: snapshot.settings,
       };
     } catch (err) {
       return {
