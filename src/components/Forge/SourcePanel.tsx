@@ -1,13 +1,17 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Sparkles, Plus, Trash2, Lightbulb, Upload } from 'lucide-react';
+import { Sparkles, Plus, Trash2, Lightbulb, Upload, Terminal } from 'lucide-react';
 import { useAiForge, CardTypePreference } from '@/hooks/useAiForge';
 import { useAnkiDB } from '@/hooks/useAnkiDB';
 
 export default function SourcePanel() {
   const [mode, setMode] = useState<'ai' | 'manual'>('ai');
   const [text, setText] = useState('');
+  
+  // New State: Command Center Instructions
+  const [instructions, setInstructions] = useState('');
+  
   const [manualCard, setManualCard] = useState({ front: '', back: '' });
   const [cardType, setCardType] = useState<CardTypePreference>('mixed');
   const [isParsing, setIsParsing] = useState(false);
@@ -16,6 +20,22 @@ export default function SourcePanel() {
   const { forgeCards, isForging, error } = useAiForge();
   const { addCard } = useAnkiDB();
 
+  // Smart Chips for 1-Click Prompt Engineering
+  const quickPrompts = [
+    "Max 5 Cards",
+    "Translate to Persian",
+    "Focus on Slang/Idioms",
+    "Focus on Grammar"
+  ];
+
+  const toggleQuickPrompt = (prompt: string) => {
+    if (instructions.includes(prompt)) {
+      setInstructions(prev => prev.replace(prompt, '').replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, ''));
+    } else {
+      setInstructions(prev => prev ? `${prev}, ${prompt}` : prompt);
+    }
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -23,7 +43,6 @@ export default function SourcePanel() {
     setIsParsing(true);
     try {
       if (file.type === 'application/pdf') {
-        // Bulletproof dynamic import for Next.js Webpack limits
         const pdfjsLib = await import('pdfjs-dist/build/pdf.min.mjs');
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
@@ -67,12 +86,13 @@ export default function SourcePanel() {
 
   const insertExample = () => {
     setText("The dopaminergic system in the human brain primarily utilizes dopamine to transmit signals. The mesolimbic pathway, or 'reward pathway', connects the VTA to the nucleus accumbens. Elevated dopamine levels here reinforce behaviors like eating or social interaction.");
+    setInstructions("Translate explanations to Persian, focus on biological jargon, exactly 3 cards");
   };
 
   return (
-    <div className="flex flex-col h-full p-6 md:p-10 space-y-6 overflow-y-auto custom-scrollbar">
+    <div className="flex flex-col h-full p-6 md:p-10 space-y-5 overflow-y-auto custom-scrollbar">
       {/* Header & Mode Switcher */}
-      <div className="flex items-center justify-between shrink-0">
+      <div className="flex items-center justify-between shrink-0 mb-1">
         <div className="flex p-1 bg-white/5 rounded-xl border border-white/5">
           <button 
             onClick={() => setMode('ai')} 
@@ -105,6 +125,7 @@ export default function SourcePanel() {
 
       {mode === 'ai' ? (
         <div className="flex-1 flex flex-col space-y-4 min-h-0">
+          
           <div className="flex items-center gap-2 p-1 bg-[#131315] border border-white/5 rounded-lg self-start">
             {(['mixed', 'qna', 'cloze'] as const).map(type => (
               <button
@@ -117,35 +138,106 @@ export default function SourcePanel() {
             ))}
           </div>
 
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Initialize forge sequence. Paste text or import a document..."
-            disabled={isForging || isParsing}
-            className="flex-1 w-full bg-surface-container-low rounded-2xl p-6 font-body text-sm leading-relaxed text-on-surface-variant focus:text-on-surface outline-none border border-white/5 focus:border-primary/30 transition-all resize-none custom-scrollbar disabled:opacity-50"
-          />
+          {/* 1. Data Source Area */}
+          <div className="relative flex-[2] w-full bg-surface-container-low rounded-2xl border border-white/5 focus-within:border-primary/30 transition-all overflow-hidden min-h-[120px]">
+             {/* Scanning Line Effect during forging */}
+             {isForging && (
+                <div className="absolute top-0 left-0 w-full h-[2px] bg-primary shadow-[0_0_15px_#fb51fb] animate-scan z-10" />
+             )}
+             <textarea
+               value={text}
+               onChange={(e) => setText(e.target.value)}
+               placeholder="Paste raw text or subtitles here..."
+               disabled={isForging || isParsing}
+               className="absolute inset-0 w-full h-full p-5 font-body text-sm leading-relaxed text-on-surface-variant focus:text-on-surface outline-none bg-transparent resize-none custom-scrollbar disabled:opacity-50"
+             />
+          </div>
           
-          <div className="flex justify-between items-center pt-2">
+          {/* 2. Command Center (Instructions Injection) */}
+          <div className="flex flex-col bg-black/40 border border-white/5 focus-within:border-tertiary/40 rounded-2xl transition-all overflow-hidden shrink-0 relative">
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.02] border-b border-white/5">
+               <Terminal size={14} className="text-tertiary" />
+               <span className="text-[9px] font-bold uppercase tracking-widest text-white/50">Forge Instructions (Optional)</span>
+            </div>
+            
+            <textarea
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              placeholder="e.g., 'Extract exactly 3 cards focusing on medical jargon and translate definitions to Persian...'"
+              disabled={isForging || isParsing}
+              className="w-full bg-transparent p-4 text-xs font-mono text-tertiary/90 outline-none resize-none placeholder:text-white/10 custom-scrollbar min-h-[60px]"
+            />
+            
+            {/* Smart Chips for UX */}
+            <div className="flex flex-wrap gap-2 px-4 pb-3">
+               {quickPrompts.map(prompt => {
+                 const isActive = instructions.includes(prompt);
+                 return (
+                   <button
+                     key={prompt}
+                     onClick={() => toggleQuickPrompt(prompt)}
+                     disabled={isForging || isParsing}
+                     className={`text-[9px] px-2 py-1 rounded-md uppercase tracking-wider font-bold transition-all border ${isActive ? 'bg-tertiary/20 text-tertiary border-tertiary/30' : 'bg-white/5 text-white/40 border-transparent hover:bg-white/10'} disabled:opacity-50`}
+                   >
+                     {isActive ? '✓ ' : '+ '}{prompt}
+                   </button>
+                 );
+               })}
+            </div>
+            
+            {/* Shimmer Overlay during Forging */}
+            {isForging && (
+               <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-10">
+                 <span className="text-[10px] font-mono text-tertiary animate-pulse uppercase tracking-[0.2em]">
+                   Injecting Parameters...
+                 </span>
+               </div>
+            )}
+          </div>
+
+          {/* Progress Indicator */}
+          {isForging && (
+             <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden animate-in fade-in duration-500">
+               <div className="bg-primary h-full w-full animate-progress-fast shadow-[0_0_10px_#fb51fb]" />
+             </div>
+          )}
+
+          {/* Bottom Action Bar */}
+          <div className="flex justify-between items-center pt-2 shrink-0">
              <div className="flex gap-4">
-               <button onClick={() => setText('')} className="text-[10px] text-white/20 hover:text-error flex items-center gap-1.5 uppercase tracking-widest font-bold transition-colors">
-                 <Trash2 size={14}/> Clear Memory
+               <button onClick={() => {setText(''); setInstructions('');}} disabled={isForging} className="text-[10px] text-white/20 hover:text-error flex items-center gap-1.5 uppercase tracking-widest font-bold transition-colors disabled:opacity-50">
+                 <Trash2 size={14}/> Reset
                </button>
-               <button onClick={insertExample} className="text-[10px] text-white/20 hover:text-tertiary flex items-center gap-1.5 uppercase tracking-widest font-bold transition-colors">
+               <button onClick={insertExample} disabled={isForging} className="text-[10px] text-white/20 hover:text-tertiary flex items-center gap-1.5 uppercase tracking-widest font-bold transition-colors disabled:opacity-50">
                  <Lightbulb size={14}/> Load Example
                </button>
              </div>
              
              <button 
-                onClick={() => forgeCards(text, cardType)}
+                onClick={() => forgeCards(text, cardType, instructions)}
                 disabled={isForging || !text.trim() || isParsing}
-                className="bg-primary text-black px-8 py-3.5 rounded-full font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all disabled:opacity-30 shadow-lg shadow-primary/20"
+                className={`
+                  relative overflow-hidden px-8 py-3.5 rounded-full font-bold text-xs uppercase tracking-widest 
+                  flex items-center gap-2 transition-all duration-300 shadow-lg
+                  ${isForging 
+                    ? 'bg-white/5 text-primary border border-primary/20 cursor-wait shadow-none' 
+                    : 'bg-primary text-black hover:scale-105 active:scale-95 shadow-primary/20'}
+                `}
              >
-               <Sparkles size={16} className={isForging ? 'animate-pulse' : ''} /> 
-               {isForging ? 'Synthesizing...' : 'Execute Forge'}
+               {/* Shimmer Effect */}
+               {isForging && (
+                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-shimmer" />
+               )}
+               
+               <Sparkles size={16} className={isForging ? 'animate-spin opacity-50' : ''} /> 
+               <span className="relative z-10">
+                 {isForging ? 'Synthesizing...' : 'Execute Forge'}
+               </span>
              </button>
           </div>
         </div>
       ) : (
+        // Manual Mode Area (Unchanged)
         <div className="flex-1 flex flex-col space-y-6">
           <div className="space-y-2">
             <label className="text-[9px] uppercase tracking-widest text-white/20 font-bold ml-1">Front (Stimulus)</label>

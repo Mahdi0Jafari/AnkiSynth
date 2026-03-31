@@ -42,43 +42,44 @@ export default function Flashcard({ card, onUpdate, onDelete, onToggleApprove }:
       if (part.startsWith('{{c1::') && part.endsWith('}}')) {
         const cleanText = part.replace('{{c1::', '').replace('}}', '');
         return (
-          <span key={index} className="text-tertiary font-mono bg-tertiary/10 px-1.5 py-0.5 rounded border border-tertiary/20">
+          <span key={index} className="text-tertiary font-mono bg-tertiary/10 px-1.5 py-0.5 rounded border border-tertiary/20" dir="auto">
             {cleanText}
           </span>
         );
       }
-      return <span key={index}>{part}</span>;
+      return <span key={index} dir="auto">{part}</span>;
     });
   };
 
   // Parses the structured back string into UI elements
+  // Added dir="auto" for Multi-language support (Persian/Arabic etc.)
   const renderBackDisplay = (text: string) => {
     const parts = text.split('|').map(p => p.trim());
     if (parts.length >= 3) {
       return (
         <div className="flex flex-col gap-2.5">
-          <div className="text-sm text-white/90">
-            <span className="text-primary/80 text-[10px] uppercase font-bold mr-2 tracking-widest bg-primary/10 px-1 rounded">DEF</span>
+          <div className="text-sm text-white/90" dir="auto">
+            <span className="text-primary/80 text-[10px] uppercase font-bold mr-2 tracking-widest bg-primary/10 px-1 rounded inline-block" dir="ltr">DEF</span>
             {parts[0].replace('[Definition:', '').replace(']', '')}
           </div>
-          <div className="text-xs text-white/70">
-            <span className="text-secondary/80 text-[10px] uppercase font-bold mr-2 tracking-widest bg-secondary/10 px-1 rounded">TONE</span>
+          <div className="text-xs text-white/70" dir="auto">
+            <span className="text-secondary/80 text-[10px] uppercase font-bold mr-2 tracking-widest bg-secondary/10 px-1 rounded inline-block" dir="ltr">TONE</span>
             {parts[1].replace('[Tone/Pragmatics:', '').replace(']', '')}
           </div>
-          <div className="text-xs text-white/50 italic border-l-2 border-tertiary/30 pl-3 py-1">
+          <div className="text-xs text-white/50 italic border-l-2 border-tertiary/30 pl-3 py-1" dir="auto">
             {parts.slice(2).join(' | ').replace('[Example:', '').replace(']', '')}
           </div>
         </div>
       );
     }
     // Fallback if the AI fails the schema formatting
-    return <div className="text-sm text-white/70">{text}</div>;
+    return <div className="text-sm text-white/70" dir="auto">{text}</div>;
   };
 
   return (
     <div className={`group relative border transition-all duration-300 rounded-2xl p-6 ${isApproved ? 'border-secondary/20 bg-[#131315]/80' : 'border-white/5 bg-[#131315] hover:border-primary/30 hover:shadow-[0_0_30px_rgba(251,81,251,0.03)]'}`}>
       
-      {/* Header section remains identical */}
+      {/* Header section */}
       <div className="flex items-center justify-between mb-5 border-b border-white/5 pb-3">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 opacity-50">
@@ -122,6 +123,7 @@ export default function Flashcard({ card, onUpdate, onDelete, onToggleApprove }:
               ref={frontRef}
               contentEditable
               suppressContentEditableWarning
+              dir="auto"
               onBlur={(e) => {
                 const newText = e.currentTarget.innerText;
                 if (newText !== card.front && card.id) {
@@ -150,6 +152,7 @@ export default function Flashcard({ card, onUpdate, onDelete, onToggleApprove }:
               ref={backRef}
               contentEditable
               suppressContentEditableWarning
+              dir="auto"
               onBlur={(e) => {
                 const newText = e.currentTarget.innerText;
                 if (newText !== card.back && card.id) {

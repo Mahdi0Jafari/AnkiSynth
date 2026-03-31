@@ -12,14 +12,18 @@ export const useAiForge = () => {
   const [isForging, setIsForging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const processChunk = async (chunkText: string, styleInstruction: string): Promise<any[]> => {
+  // Added customInstructions to the parameter list
+  const processChunk = async (chunkText: string, styleInstruction: string, customInstructions: string): Promise<any[]> => {
     const userMessage = `
-      SOURCE TEXT (Identify Scene/Context):
+      SOURCE TEXT (Identify Language & Context):
       "${chunkText}"
       
-      INSTRUCTION:
+      USER'S EXPLICIT INSTRUCTIONS (PRIORITY OVERRIDE):
+      ${customInstructions ? `"${customInstructions}"` : "Extract high-yield chunks based on standard SLA principles."}
+      
+      STYLE CONSTRAINT:
       ${styleInstruction}
-      - Use high-IQ linguistic terminology in the "Tone/Pragmatics" section.
+      - Use professional/high-IQ linguistic terminology in the "Tone/Pragmatics" section.
       - Ensure one tag is ALWAYS the identified Scene/Atmosphere.
     `;
 
@@ -63,7 +67,9 @@ export const useAiForge = () => {
             }
           }
         },
-        temperature: 0.7 // Increased for better pragmatic/tone analysis with strict schema
+        // Temperature 0.7 allows for creative/deep pragmatic analysis, 
+        // while structured outputs guarantee the JSON won't break.
+        temperature: 0.7 
       })
     });
 
@@ -78,7 +84,8 @@ export const useAiForge = () => {
     return parsed.cards || [];
   };
 
-  const forgeCards = async (sourceText: string, typePreference: CardTypePreference = 'mixed') => {
+  // Added customInstructions with a default empty string
+  const forgeCards = async (sourceText: string, typePreference: CardTypePreference = 'mixed', customInstructions: string = '') => {
     if (!sourceText.trim()) return;
     
     if (!apiKey) {
@@ -106,7 +113,7 @@ export const useAiForge = () => {
     }
 
     try {
-      // Basic Semantic Chunking (split by double newline, ~2000 chars max)
+      // Basic Semantic Chunking (~2000 chars max)
       const paragraphs = sourceText.split(/\n\s*\n/);
       let currentChunk = '';
       const chunks: string[] = [];
@@ -123,10 +130,10 @@ export const useAiForge = () => {
 
       let allCards: any[] = [];
       
-      // Process chunks sequentially to respect rate limits (can be parallelized later)
+      // Process chunks sequentially to respect API rate limits
       for (const chunk of chunks) {
          if(!chunk.trim()) continue;
-         const cards = await processChunk(chunk, styleInstruction);
+         const cards = await processChunk(chunk, styleInstruction, customInstructions);
          allCards = [...allCards, ...cards];
       }
 

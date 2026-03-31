@@ -1,3 +1,4 @@
+// src/store/useSettings.ts
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -6,6 +7,7 @@ interface SettingsState {
   apiKey: string;
   baseUrl: string;
   model: string;
+  defaultInstructions: string; // فیلد جدید برای ذخیره دستورات همیشگی کاربر
   // متدهایی برای تغییر مقادیر
   setSettings: (settings: Partial<Omit<SettingsState, 'setSettings' | 'resetSettings'>>) => void;
   resetSettings: () => void;
@@ -17,8 +19,9 @@ export const useSettings = create<SettingsState>()(
     (set) => ({
       // مقادیر اولیه
       apiKey: '',
-      baseUrl: 'https://api.openai.com/v1', // آدرس پیش‌فرض OpenAI
-      model: 'gpt-4o-mini',                // بهینه‌ترین مدل از نظر هزینه و سرعت
+      baseUrl: 'https://api.openai.com/v1', 
+      model: 'gpt-4o-mini',                
+      defaultInstructions: '', // به صورت پیش‌فرض خالی است
 
       // بروزرسانی بخشی از تنظیمات
       setSettings: (newSettings) => 
@@ -28,12 +31,13 @@ export const useSettings = create<SettingsState>()(
       resetSettings: () => set({ 
         apiKey: '', 
         baseUrl: 'https://api.openai.com/v1', 
-        model: 'gpt-4o-mini' 
+        model: 'gpt-4o-mini',
+        defaultInstructions: ''
       }),
     }),
     {
       name: 'AnkiSynth-settings-storage', // نام کلید در LocalStorage
-      storage: createJSONStorage(() => localStorage), // استفاده از حافظه مرورگر
+      storage: createJSONStorage(() => localStorage), 
     }
   )
 );

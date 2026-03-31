@@ -24,6 +24,27 @@ module.exports = {
         "body": ["Inter", "sans-serif"],
         "mono": ["Roboto Mono", "monospace"]
       },
+      // انیمیشن‌های اضافه شده برای تجربه Forge
+      animation: {
+        'shimmer': 'shimmer 2s infinite linear',
+        'progress-fast': 'progress 1.5s ease-in-out infinite',
+        'scan': 'scan 2.5s ease-in-out infinite',
+      },
+      keyframes: {
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+        progress: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+        scan: {
+          '0%': { top: '0%', opacity: '0.8' },
+          '50%': { top: '100%', opacity: '1' },
+          '100%': { top: '0%', opacity: '0.8' },
+        }
+      }
     },
   },
   plugins: [],
