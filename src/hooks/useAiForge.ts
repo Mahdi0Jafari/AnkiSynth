@@ -6,13 +6,37 @@ import { SYSTEM_PROMPT } from '../lib/constants';
 
 export type CardTypePreference = 'mixed' | 'qna' | 'cloze';
 
+export interface ForgeProgress {
+  current: number;
+  total: number;
+}
+
 export const useAiForge = () => {
   const { apiKey, baseUrl, model } = useSettings();
   const { addCard } = useAnkiDB();
   const [isForging, setIsForging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // NEW: Telemetry state to feed progress bars in the UI
+  const [progress, setProgress] = useState<ForgeProgress | null>(null);
 
-  // Added customInstructions to the parameter list
+  /**
+   * Data Sanitization Layer
+   * Strips out SRT/VTT timestamps, speaker tags, and excessive whitespace.
+   * Drastically reduces token waste and prevents LLM hallucination on numbers.
+   */
+  const sanitizeSourceText = (text: string): string => {
+    let cleaned = text;
+    // Remove SRT timestamps (e.g., 00:00:01,000 --> 00:00:04,000)
+    cleaned = cleaned.replace(/\d{2}:\d{2}:\d{2}[,.]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}[,.]\d{3}/g, '');
+    // Remove standalone subtitle index numbers
+    cleaned = cleaned.replace(/^\d+$/gm, '');
+    // Remove VTT speaker tags (e.g., <v Speaker Name>)
+    cleaned = cleaned.replace(/<v [^>]+>/g, '').replace(/<\/v>/g, '');
+    // Collapse excessive newlines created by deletion
+    return cleaned.replace(/\n{3,}/g, '\n\n').trim();
+  };
+
   const processChunk = async (chunkText: string, styleInstruction: string, customInstructions: string): Promise<any[]> => {
     const userMessage = `
       SOURCE TEXT (Identify Language & Context):
@@ -67,8 +91,6 @@ export const useAiForge = () => {
             }
           }
         },
-        // Temperature 0.7 allows for creative/deep pragmatic analysis, 
-        // while structured outputs guarantee the JSON won't break.
         temperature: 0.7 
       })
     });
@@ -84,7 +106,6 @@ export const useAiForge = () => {
     return parsed.cards || [];
   };
 
-  // Added customInstructions with a default empty string
   const forgeCards = async (sourceText: string, typePreference: CardTypePreference = 'mixed', customInstructions: string = '') => {
     if (!sourceText.trim()) return;
     
@@ -95,6 +116,7 @@ export const useAiForge = () => {
 
     setIsForging(true);
     setError(null);
+    setProgress({ current: 0, total: 0 });
 
     let styleInstruction = "STRATEGY: Hybrid Acquisition. Generate a mix of Cloze (for idioms/collocations) and Basic (for pragmatic logic).";
     
@@ -113,8 +135,11 @@ export const useAiForge = () => {
     }
 
     try {
-      // Basic Semantic Chunking (~2000 chars max)
-      const paragraphs = sourceText.split(/\n\s*\n/);
+      // 1. Sanitize the raw input
+      const sanitizedText = sanitizeSourceText(sourceText);
+
+      // 2. Semantic Chunking (~2000 chars max)
+      const paragraphs = sanitizedText.split(/\n\s*\n/);
       let currentChunk = '';
       const chunks: string[] = [];
 
@@ -128,34 +153,44 @@ export const useAiForge = () => {
       }
       if (currentChunk) chunks.push(currentChunk.trim());
 
-      let allCards: any[] = [];
+      // Initialize Progress
+      setProgress({ current: 0, total: chunks.length });
       
-      // Process chunks sequentially to respect API rate limits
-      for (const chunk of chunks) {
+      // 3. Sequential Processing & Atomic Commits
+      // We process one chunk at a time to respect rate limits AND save instantly.
+      for (let i = 0; i < chunks.length; i++) {
+         const chunk = chunks[i];
          if(!chunk.trim()) continue;
-         const cards = await processChunk(chunk, styleInstruction, customInstructions);
-         allCards = [...allCards, ...cards];
-      }
 
-      if (allCards.length > 0) {
-        await Promise.all(allCards.map((card: any) => 
-          addCard({
-            front: card.front || 'Empty Front',
-            back: card.back || 'Empty Back',
-            type: card.type === 'cloze' ? 'cloze' : 'basic',
-            status: 'draft',
-            sourceText: sourceText.substring(0, 150),
-            tags: card.tags || ['AnkiSynth-AI']
-          })
-        ));
+         // Update telemetry before firing the API
+         setProgress({ current: i + 1, total: chunks.length });
+
+         const cards = await processChunk(chunk, styleInstruction, customInstructions);
+         
+         // INCREMENTAL SAVE: If the internet drops at chunk 5, chunks 1-4 are safely in the DB.
+         if (cards && cards.length > 0) {
+           await Promise.all(cards.map((card: any) => 
+             addCard({
+               front: card.front || 'Empty Front',
+               back: card.back || 'Empty Back',
+               type: card.type === 'cloze' ? 'cloze' : 'basic',
+               status: 'draft',
+               sourceText: sanitizedText.substring(0, 150), // Store a snippet of sanitized context
+               tags: card.tags || ['AnkiSynth-AI'],
+               chunkIndex: i // Added telemetry metadata mapping
+             })
+           ));
+         }
       }
     } catch (err: any) {
       console.error("Forging failed:", err);
-      setError(err.message || 'An unexpected error occurred during synthesis.');
+      setError(err.message || 'An unexpected error occurred during synthesis. Partial data may have been saved.');
     } finally {
       setIsForging(false);
+      setProgress(null);
     }
   };
 
-  return { forgeCards, isForging, error };
+  // Export 'progress' alongside existing returns
+  return { forgeCards, isForging, error, progress };
 };

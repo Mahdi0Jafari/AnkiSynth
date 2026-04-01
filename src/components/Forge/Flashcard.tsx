@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Trash2, CheckCircle2, Type, AlertCircle, Edit2 } from 'lucide-react';
 import { AnkiCard } from '@/lib/db';
 
@@ -17,24 +17,6 @@ export default function Flashcard({ card, onUpdate, onDelete, onToggleApprove }:
   // State to manage edit mode toggle
   const [isEditingFront, setIsEditingFront] = useState(false);
   const [isEditingBack, setIsEditingBack] = useState(false);
-  
-  const frontRef = useRef<HTMLDivElement>(null);
-  const backRef = useRef<HTMLDivElement>(null);
-
-  // Sync refs when entering edit mode to ensure cursor placement works correctly
-  useEffect(() => {
-    if (isEditingFront && frontRef.current) {
-      frontRef.current.innerText = card.front;
-      frontRef.current.focus();
-    }
-  }, [isEditingFront, card.front]);
-
-  useEffect(() => {
-    if (isEditingBack && backRef.current) {
-      backRef.current.innerText = card.back;
-      backRef.current.focus();
-    }
-  }, [isEditingBack, card.back]);
 
   // Renders the cloze syntax cleanly when NOT in edit mode
   const renderFrontDisplay = (text: string) => {
@@ -119,19 +101,19 @@ export default function Flashcard({ card, onUpdate, onDelete, onToggleApprove }:
         {/* Front Field */}
         <div className="relative group/field">
           {isEditingFront ? (
-            <div 
-              ref={frontRef}
-              contentEditable
-              suppressContentEditableWarning
+            <textarea
+              autoFocus
               dir="auto"
+              defaultValue={card.front}
+              onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
               onBlur={(e) => {
-                const newText = e.currentTarget.innerText;
+                const newText = e.target.value;
                 if (newText !== card.front && card.id) {
                   onUpdate(card.id, { front: newText });
                 }
                 setIsEditingFront(false);
               }}
-              className="text-sm font-medium outline-none border-b border-primary/50 pb-2 text-white/90 bg-black/20 p-2 rounded min-h-[40px]"
+              className="w-full text-sm font-medium outline-none border border-primary/50 text-white/90 bg-black/40 p-3 rounded-lg min-h-[60px] resize-none custom-scrollbar shadow-inner"
             />
           ) : (
             <div 
@@ -148,19 +130,19 @@ export default function Flashcard({ card, onUpdate, onDelete, onToggleApprove }:
         {/* Back Field */}
         <div className="relative group/field bg-black/20 rounded-xl p-4 border border-white/5">
           {isEditingBack ? (
-            <div 
-              ref={backRef}
-              contentEditable
-              suppressContentEditableWarning
+            <textarea
+              autoFocus
               dir="auto"
+              defaultValue={card.back}
+              onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
               onBlur={(e) => {
-                const newText = e.currentTarget.innerText;
+                const newText = e.target.value;
                 if (newText !== card.back && card.id) {
                   onUpdate(card.id, { back: newText });
                 }
                 setIsEditingBack(false);
               }}
-              className="outline-none border-b border-primary/50 pb-2 text-xs text-secondary/70 font-mono min-h-[60px]"
+              className="w-full outline-none border border-primary/50 text-xs text-secondary/90 font-mono bg-black/40 p-3 rounded-lg min-h-[80px] resize-none custom-scrollbar shadow-inner"
             />
           ) : (
             <div 

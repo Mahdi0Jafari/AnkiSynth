@@ -1,3 +1,4 @@
+// src/hooks/useAnkiDB.ts
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type AnkiCard, type AnkiDeck } from '../lib/db';
 import { useNavigationStore } from '../store/useNavigationStore';
@@ -37,18 +38,17 @@ export interface ImportResult {
 }
 
 /**
- * تابع کمکی برای تولید هش محتوا
- * جهت جلوگیری از ایجاد کارت‌های تکراری در دیتابیس
+ * Utility to generate a deterministic hash for deduplication.
+ * Prevents identical cognitive nodes from polluting the database.
  */
 const generateContentHash = (front: string, back: string): string => {
   const combined = `${front.trim()}|${back.trim()}`;
-  // یک متد ساده برای تولید هش 32 کاراکتری
   return btoa(encodeURIComponent(combined)).substring(0, 32);
 };
 
 /**
  * Validates the structure of a parsed snapshot before import.
- * Returns null if valid, or an error message string if invalid.
+ * Prevents corrupted files from wiping the local IndexedDB.
  */
 const validateSnapshot = (data: unknown): string | null => {
   if (!data || typeof data !== 'object') return 'Invalid file: not a JSON object.';
@@ -80,29 +80,26 @@ export const parseSnapshotFile = async (file: File): Promise<{ snapshot?: AnkiSy
 export const useAnkiDB = () => {
   const { activeDeckId, setActiveDeckId } = useNavigationStore();
 
-  // ۱. واکشی کارت‌ها: مدیریت هوشمند بین حالت "New Deck" و "Edit Mode"
+  // 1. Workspace Hydration: Intelligent routing between 'New Deck' and 'Edit Mode'
   const workspaceCards = useLiveQuery(() => {
     if (activeDeckId) {
-      // حالت ویرایش: لود کارت‌های متعلق به دک انتخاب شده
       return db.cards.where('deckId').equals(activeDeckId).reverse().sortBy('createdAt');
     } else {
-      // حالت دک جدید: لود کارت‌هایی که هنوز به هیچ دکی وصل نشده‌اند
       return db.cards.filter(c => !c.deckId).reverse().sortBy('createdAt');
     }
   }, [activeDeckId]);
 
-  // ۲. لیست تمام دک‌های موجود در کتابخانه
+  // 2. Vault Library Hydration
   const libraryDecks = useLiveQuery(() => db.decks.orderBy('createdAt').reverse().toArray());
 
   // --- Total counts for the Vault UI ---
   const totalDeckCount = useLiveQuery(() => db.decks.count());
   const totalCardCount = useLiveQuery(() => db.cards.count());
 
-  // ۳. افزودن کارت با قابلیت تشخیص تکراری (Deduplication)
+  // 3. Incremental Card Injection with Deduplication
   const addCard = async (card: Omit<AnkiCard, 'id' | 'createdAt' | 'sourceHash'>) => {
     const hash = generateContentHash(card.front, card.back);
 
-    // بررسی اینکه آیا کارتی با این محتوا قبلاً در این دک وجود دارد یا خیر
     const existing = await db.cards.where('sourceHash').equals(hash).first();
     if (existing) {
       console.warn("Deduplication Core: Duplicate node detected. Skipping injection.");
@@ -112,7 +109,7 @@ export const useAnkiDB = () => {
     return await db.cards.add({ 
       ...card, 
       sourceHash: hash,
-      deckId: activeDeckId ?? undefined, // تبدیل null به undefined برای رعایت شمای Dexie
+      deckId: activeDeckId ?? undefined, // Converts null to undefined for Dexie schema compliance
       createdAt: Date.now(), 
       status: 'draft', 
       tags: card.tags || [] 
@@ -120,7 +117,7 @@ export const useAnkiDB = () => {
   };
 
   const updateCard = async (id: number, updates: Partial<AnkiCard>) => {
-    // اگر محتوا تغییر کرد، هش باید مجدداً تولید شود
+    // Regenerate deterministic hash if core content mutates
     if (updates.front || updates.back) {
       const current = await db.cards.get(id);
       if (current) {
@@ -191,7 +188,7 @@ export const useAnkiDB = () => {
   };
 
   const loadDeckToWorkspace = async (deckId: number) => {
-    // پاکسازی کارت‌های یتیم (Orphan) قبل از لود دک جدید
+    // Purge orphaned nodes before hydrating a new workspace
     const unsaved = await db.cards.filter(c => !c.deckId).toArray();
     if (unsaved.length > 0) {
       await db.cards.bulkDelete(unsaved.map(c => c.id!));
@@ -222,8 +219,8 @@ export const useAnkiDB = () => {
     ]);
 
     const snapshot: AnkiSynthSnapshot = {
-      version: 4,
-      appVersion: '0.1.0',
+      version: 5, // Bumped to Version 5 to support incremental tracking metadata
+      appVersion: '0.1.1',
       exportedAt: new Date().toISOString(),
       settings: currentSettings,
       data: {

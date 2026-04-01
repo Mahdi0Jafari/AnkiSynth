@@ -8,8 +8,6 @@ import { useAnkiDB } from '@/hooks/useAnkiDB';
 export default function SourcePanel() {
   const [mode, setMode] = useState<'ai' | 'manual'>('ai');
   const [text, setText] = useState('');
-  
-  // New State: Command Center Instructions
   const [instructions, setInstructions] = useState('');
   
   const [manualCard, setManualCard] = useState({ front: '', back: '' });
@@ -17,12 +15,13 @@ export default function SourcePanel() {
   const [isParsing, setIsParsing] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { forgeCards, isForging, error } = useAiForge();
+  
+  // Extracting 'progress' state from our newly refactored hook
+  const { forgeCards, isForging, error, progress } = useAiForge();
   const { addCard } = useAnkiDB();
 
-  // Smart Chips for 1-Click Prompt Engineering
   const quickPrompts = [
-    "Max 5 Cards",
+    "Max 5 Cards per chunk",
     "Translate to Persian",
     "Focus on Slang/Idioms",
     "Focus on Grammar"
@@ -89,6 +88,12 @@ export default function SourcePanel() {
     setInstructions("Translate explanations to Persian, focus on biological jargon, exactly 3 cards");
   };
 
+  // Helper function to calculate percentage for the progress bar
+  const calculateProgressPercent = () => {
+    if (!progress || progress.total === 0) return 0;
+    return Math.round((progress.current / progress.total) * 100);
+  };
+
   return (
     <div className="flex flex-col h-full p-6 md:p-10 space-y-5 overflow-y-auto custom-scrollbar">
       {/* Header & Mode Switcher */}
@@ -138,9 +143,7 @@ export default function SourcePanel() {
             ))}
           </div>
 
-          {/* 1. Data Source Area */}
           <div className="relative flex-[2] w-full bg-surface-container-low rounded-2xl border border-white/5 focus-within:border-primary/30 transition-all overflow-hidden min-h-[120px]">
-             {/* Scanning Line Effect during forging */}
              {isForging && (
                 <div className="absolute top-0 left-0 w-full h-[2px] bg-primary shadow-[0_0_15px_#fb51fb] animate-scan z-10" />
              )}
@@ -153,7 +156,6 @@ export default function SourcePanel() {
              />
           </div>
           
-          {/* 2. Command Center (Instructions Injection) */}
           <div className="flex flex-col bg-black/40 border border-white/5 focus-within:border-tertiary/40 rounded-2xl transition-all overflow-hidden shrink-0 relative">
             <div className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.02] border-b border-white/5">
                <Terminal size={14} className="text-tertiary" />
@@ -168,7 +170,6 @@ export default function SourcePanel() {
               className="w-full bg-transparent p-4 text-xs font-mono text-tertiary/90 outline-none resize-none placeholder:text-white/10 custom-scrollbar min-h-[60px]"
             />
             
-            {/* Smart Chips for UX */}
             <div className="flex flex-wrap gap-2 px-4 pb-3">
                {quickPrompts.map(prompt => {
                  const isActive = instructions.includes(prompt);
@@ -185,24 +186,29 @@ export default function SourcePanel() {
                })}
             </div>
             
-            {/* Shimmer Overlay during Forging */}
-            {isForging && (
-               <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-10">
-                 <span className="text-[10px] font-mono text-tertiary animate-pulse uppercase tracking-[0.2em]">
-                   Injecting Parameters...
+            {/* Intelligent Shimmer Overlay displaying exact chunk progress */}
+            {isForging && progress && (
+               <div className="absolute inset-0 bg-black/80 backdrop-blur-[2px] flex flex-col items-center justify-center z-10">
+                 <span className="text-[10px] font-mono text-tertiary animate-pulse uppercase tracking-[0.2em] mb-2">
+                   {progress.current > 0 ? `Synthesizing Chunk ${progress.current} of ${progress.total}...` : 'Initializing NLP Engine...'}
                  </span>
+                 <div className="text-[9px] text-white/40 uppercase tracking-widest font-bold">
+                   {calculateProgressPercent()}% Complete
+                 </div>
                </div>
             )}
           </div>
 
-          {/* Progress Indicator */}
-          {isForging && (
-             <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden animate-in fade-in duration-500">
-               <div className="bg-primary h-full w-full animate-progress-fast shadow-[0_0_10px_#fb51fb]" />
+          {/* Real Determinate Progress Bar */}
+          {isForging && progress && progress.total > 0 && (
+             <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+               <div 
+                  className="bg-primary h-full shadow-[0_0_10px_#fb51fb] transition-all duration-500 ease-out" 
+                  style={{ width: `${calculateProgressPercent()}%` }}
+               />
              </div>
           )}
 
-          {/* Bottom Action Bar */}
           <div className="flex justify-between items-center pt-2 shrink-0">
              <div className="flex gap-4">
                <button onClick={() => {setText(''); setInstructions('');}} disabled={isForging} className="text-[10px] text-white/20 hover:text-error flex items-center gap-1.5 uppercase tracking-widest font-bold transition-colors disabled:opacity-50">
@@ -224,20 +230,18 @@ export default function SourcePanel() {
                     : 'bg-primary text-black hover:scale-105 active:scale-95 shadow-primary/20'}
                 `}
              >
-               {/* Shimmer Effect */}
                {isForging && (
                   <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-shimmer" />
                )}
                
                <Sparkles size={16} className={isForging ? 'animate-spin opacity-50' : ''} /> 
                <span className="relative z-10">
-                 {isForging ? 'Synthesizing...' : 'Execute Forge'}
+                 {isForging ? 'Processing...' : 'Execute Forge'}
                </span>
              </button>
           </div>
         </div>
       ) : (
-        // Manual Mode Area (Unchanged)
         <div className="flex-1 flex flex-col space-y-6">
           <div className="space-y-2">
             <label className="text-[9px] uppercase tracking-widest text-white/20 font-bold ml-1">Front (Stimulus)</label>

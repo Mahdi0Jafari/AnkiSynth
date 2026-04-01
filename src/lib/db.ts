@@ -9,11 +9,12 @@ export interface AnkiCard {
   type: 'basic' | 'cloze';
   sourceText?: string;
   sourceHash?: string;  
+  chunkIndex?: number;  // NEW: Tracks which textual chunk generated this card (for telemetry & resume capabilities)
   createdAt: number;
   status: 'draft' | 'approved' | 'archived';
   tags: string[];
   modelName?: string;   
-  sceneContext?: string; // فیلد جدید برای ذخیره دیتای ساختاریافته‌ی بافتار
+  sceneContext?: string; 
 }
 
 export interface AnkiDeck {
@@ -31,10 +32,11 @@ export class AnkiSynthDB extends Dexie {
     super('AnkiSynthDB');
     
     /**
-     * Version 4: Upgraded for SLA Architecture (Added sceneContext support)
+     * Version 4: Upgraded for SLA Architecture (sceneContext support)
+     * Version 5: Incremental Processing upgrade (chunkIndex tracking)
      */
-    this.version(4).stores({
-      cards: '++id, deckId, status, createdAt, *tags, sourceHash',
+    this.version(5).stores({
+      cards: '++id, deckId, status, createdAt, *tags, sourceHash, chunkIndex',
       decks: '++id, name, createdAt'
     });
   }
