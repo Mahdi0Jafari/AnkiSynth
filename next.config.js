@@ -7,11 +7,16 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
   swcMinify: true,
-  // در محیط توسعه غیرفعال می‌شود تا باگ‌های کشینگ ایجاد نکند
-  disable: process.env.NODE_ENV === "development",
+  // فعال‌سازی رجیستر خودکار برای اطمینان از نصب در هر بار لود
+  register: true,
+  // اجازه به سرویس ورکر جدید برای کنترل سریع‌تر صفحه
   workboxOptions: {
+    skipWaiting: true,
+    clientsClaim: true,
     disableDevLogs: true,
   },
+  // در محیط توسعه غیرفعال می‌شود تا باگ‌های کشینگ ایجاد نکند
+  disable: process.env.NODE_ENV === "development",
 });
 
 const isProd = process.env.NODE_ENV === 'production';
